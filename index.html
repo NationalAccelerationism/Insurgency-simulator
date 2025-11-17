@@ -39,6 +39,31 @@
             background-color: #1a202c;
             border-left: 4px solid #4a5568;
         }
+        /* New style for the High-Risk option */
+        .btn-gamble {
+            background-color: #b91c1c; /* Deep red */
+            box-shadow: 0 0 15px #b91c1c;
+            border: 2px solid #ef4444;
+        }
+        .btn-gamble:hover {
+            background-color: #dc2626;
+            box-shadow: 0 0 20px #dc2626;
+        }
+        /* Style for the secret word: visually indistinguishable but clickable */
+        #secret-wits {
+            cursor: pointer;
+            color: #9ca3af; /* Same as text-gray-400 */
+        }
+        /* Distinct style for the Revival choices */
+        .btn-revival {
+            background-color: #3b0764; /* Deep purple */
+            border: 2px solid #a78bfa;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+        .btn-revival:hover {
+            background-color: #4c1d95;
+            transform: translateY(-1px);
+        }
     </style>
 </head>
 <body class="p-4 sm:p-8 text-gray-100 min-h-screen">
@@ -46,7 +71,8 @@
     <div class="max-w-6xl mx-auto">
         <header class="text-center mb-8">
             <h1 class="4xl font-extrabold text-teal-400">PUC Strategy Simulator</h1>
-            <p class="text-gray-400 mt-2">The War of Wits: Make the right call to survive the occupation.</p>
+            <!-- The word 'Wits' is the hidden trigger -->
+            <p class="text-gray-400 mt-2">The War of <span id="secret-wits">Wits</span>: Make the right call to survive the occupation.</p>
         </header>
 
         <!-- Metrics Dashboard -->
@@ -63,7 +89,7 @@
                 <p id="morale-value" class="text-sm mt-1 text-right font-bold">100%</p>
             </div>
 
-            <!-- Supplies (Updated Icon: Stylized Pistol) -->
+            <!-- Supplies (Icon: Stylized Pistol) -->
             <div class="metric-card p-4 rounded-lg">
                 <h2 class="text-lg font-semibold text-yellow-400 flex items-center">
                     <!-- Updated SVG for Supplies (Stylized Pistol) -->
@@ -134,41 +160,107 @@
             turn: 0,
             morale: 0,
             supplies: 0,
-            manpower: 0, // Added Manpower
-            fiscalHealth: 'A',
+            manpower: 0, 
+            fiscalHealth: 'C', 
+            fiscalNumeric: 50, // Hidden numeric score 0-100 for precise fiscal tracking
             isGameOver: false,
+            hasMafiaTies: false, 
+            hasInternationalFocus: false, 
+            hasBunkers: false, 
+            hasPoliticalCollaborators: false, 
+            // Flag to show the game is on the occult path
+            occultFocus: false,
+            // Flag to indicate the ritual is complete and the revival choice is next
+            occultRevival: false, 
+            // Flag to indicate Shukhevych was chosen for branching
+            shukhevychChosen: false, 
         };
 
-        const fiscalGrades = {
-            'A': 100, // Excellent, Liquid
-            'B': 75,  // Good, Structured
-            'C': 50,  // Strained, Functional
-            'D': 25,  // Critical, Near Collapse
-            'F': 0,   // Bankrupt
+        // Map for scenario effects when a grade is given
+        const fiscalGradesMap = {
+            'A': 100, 
+            'B': 75,  
+            'C': 50,  
+            'D': 25,  
+            'F': 0,   
         };
+        
+        // --- FISCAL HEALTH LOGIC ---
+        function calculateFiscalGrade(score) {
+            if (score >= 87.5) return 'A';
+            if (score >= 62.5) return 'B';
+            if (score >= 37.5) return 'C';
+            if (score >= 12.5) return 'D';
+            return 'F';
+        }
 
-        // --- SCENARIO DATA (Updated with Manpower effects) ---
+
+        // --- SCENARIO DATA (Updated with Occult Scenario 13 and 14) ---
         const scenarios = [
-            // Index 0: Scenario 1
+            // --- PREPARATION PHASE: TURN 1 (INDEX 0) ---
             {
-                title: "Scenario 1: The First Blow (Weapons Cache)",
-                text: "The enemy is sweeping the border region, but you have intelligence on an unguarded train station full of ATGM and MANPADS. You must secure supplies or risk being caught unprepared. The danger is that the enemy might be baiting you.",
+                title: "PREP 1: Initial Mandate - Establishing the Network",
+                text: "The occupation is imminent. You must choose how to allocate your limited starting funds and influence to establish your foundational network.",
+                options: [
+                    {
+                        label: "Option A: Political Capital. Focus on bribes and loyalty drives among key local officials and the populace for reliable intelligence.",
+                        result: "A moral shield. You secure reliable intelligence and popular support, significantly boosting your future manpower and morale, but with a small tax on immediate supplies. Fiscal health holds steady.",
+                        effects: { morale: +10, supplies: -5, manpower: +200, fiscalHealth: 'C', setsPoliticalCollaborators: true }
+                    },
+                    {
+                        label: "Option B: International Pleading. Dedicate the initial budget to sending diplomatic envoys and funding lobbying groups abroad for immediate global recognition.",
+                        result: "A global stage. You successfully gain a promise of political and diplomatic support, giving your movement immense legitimacy and boosting morale, but the necessary expenditure cuts into immediate resource distribution.",
+                        effects: { morale: +15, supplies: -10, manpower: -50, fiscalHealth: 'B', setsInternationalFocus: true }
+                    },
+                    {
+                        label: "Option C: Criminal Connections. Secure stable, deep-pocketed funding from the largest organized crime syndicate, in exchange for political favors later.",
+                        result: "A necessary evil. You receive a massive initial fiscal injection and secure long-term funding (Mafia Ties), but your organization's moral standing and credibility take an immediate hit.",
+                        effects: { morale: -20, supplies: +5, manpower: -100, fiscalHealth: 'A', setsMafiaTies: true }
+                    },
+                ]
+            },
+            // --- PREPARATION PHASE: TURN 2 (INDEX 1) ---
+            {
+                title: "PREP 2: Pre-Positioning - The Final Caches",
+                text: "The enemy is closing the borders. Your final operational choice is how to use your remaining cash and time: securing long-term security, or ensuring all field commanders have reliable communications.",
+                options: [
+                    {
+                        label: "Option A: Deep Bunkers. Spend heavily on secure, hidden fortifications for your command staff and caches.",
+                        result: "A strong shell. The security of your leadership is guaranteed, boosting long-term supplies, but the high cost immediately consumes much of your cash reserve, lowering your fiscal health.",
+                        effects: { morale: +5, supplies: +15, manpower: 0, fiscalHealth: 'D', setsBunkerFlag: true } 
+                    },
+                    {
+                        label: "Option B: Secure Comms. Spend on encrypted satellite gear and signal intelligence countermeasures for command staff and field units.",
+                        result: "Operational security. This provides the best stability, securing your lines of command and boosting morale, but the equipment cost drains your immediate supplies.",
+                        effects: { morale: +10, supplies: -10, manpower: 0, fiscalHealth: 'B' }
+                    },
+                    {
+                        label: "Option C: Cash Reserve. Hold the funds liquid and conserve supplies. Start the occupation with maximum fiscal flexibility and minimal risk.",
+                        result: "Waiting for the storm. You enter the occupation fiscally secure, but your fighters are restless without new weapons, causing a dip in initial morale.",
+                        effects: { morale: -5, supplies: +5, manpower: 0, fiscalHealth: 'C' }
+                    },
+                ]
+            },
+            // --- OCCUPATION PHASE: TURN 3 (INDEX 2) - SCENARIO 1A (WITH BUNKERS) ---
+            {
+                title: "Scenario 1A: The First Blow (Weapons Cache)",
+                text: "The enemy is sweeping the border region, but you have intelligence on an unguarded train station full of ATGM and MANPADS. You must secure supplies or risk being caught unprepared. Your secure bunkers provide a fallback option.",
                 options: [
                     {
                         label: "Option A: Go Big. Send 50% of your forces to overwhelm the station quickly. High risk, high reward.",
                         result: "A fierce firefight ensues. You secure the best weapons, but suffer substantial casualties. The immediate boost in supplies strains your personnel.",
-                        effects: { morale: -10, supplies: +35, manpower: -500, fiscalHealth: 0 }, // Manpower loss
+                        effects: { morale: -10, supplies: +35, manpower: -500, fiscalHealth: 0 }, 
                         isHighRisk: true
                     },
                     {
                         label: "Option B: Use Drone Recon. Confirm the threat with FPV scouts and send only a small, specialized team to seize the cache.",
                         result: "Tactical success. You neutralize the trap with cheap drones and seize valuable supplies with minimal risk. This careful approach is financially sound but slower.",
-                        effects: { morale: +5, supplies: +20, manpower: -100, fiscalHealth: 'B' } // Minimal Manpower loss
+                        effects: { morale: +5, supplies: +20, manpower: -100, fiscalHealth: 'B' } 
                     },
                     {
                         label: "Option C: Deep Fortification. Avoid the risk entirely. Dedicate all initial resources to accelerating the hidden bunker network build.",
                         result: "Safe, but slow. You lose the chance at high-value enemy weapons, and the bunker construction severely strains local supply lines, but ensures long-term safety.",
-                        effects: { morale: 0, supplies: -10, manpower: -50, fiscalHealth: 'B' } // Minor Manpower strain
+                        effects: { morale: 0, supplies: -10, manpower: -50, fiscalHealth: 'B' } 
                     },
                     {
                         label: "Option D: Bribe Officials. Use a large amount of liquid cash to buy ATGM systems through corrupt enemy officers on the black market.",
@@ -182,15 +274,15 @@
                     },
                 ]
             },
-            // Index 1: Scenario 2
+            // --- OCCUPATION PHASE: TURN 4 (INDEX 3) - ORIGINAL: MAFIA LEAK ---
             {
-                title: "Scenario 2: The Moral Crisis (Mafia Leak)",
-                text: "The enemy has confirmed and is about to leak proof of your controversial Mafia funding ties. This will destroy your moral authority. You must choose how to respond to save your legitimacy and morale.",
+                title: "Scenario 2A: The Moral Crisis (Mafia Leak)",
+                text: "The enemy has confirmed and is about to leak proof of your controversial **Mafia funding ties**. This will destroy your moral authority. You must choose how to respond to save your legitimacy and morale.",
                 options: [
                     {
                         label: "Option A: Blame the West. Deny the funds are illicit, claim they are 'patriotic foreign donations,' and attack Western hypocrisy for not sending aid.",
                         result: "Partial Success. You save face internationally but the denial causes internal division. Many fighters question the truth, leading to a dip in internal morale.",
-                        effects: { morale: -15, supplies: 0, manpower: -200, fiscalHealth: 0 } // Desertion due to morale dip
+                        effects: { morale: -15, supplies: 0, manpower: -200, fiscalHealth: 0 }
                     },
                     {
                         label: "Option B: Pre-emptive Confession. Admit the compromise was 'necessary for survival,' and instantly use a massive amount of supplies to release humanitarian aid to remote villages.",
@@ -200,7 +292,7 @@
                     {
                         label: "Option C: Target the Propagandist. Use a drone/FOGM strike to assassinate the enemy media officer responsible for the leak.",
                         result: "Vengeance. This satisfies the fighters' bloodlust, but the leak still drops, and the assassination makes the enemy's officer a martyr, amplifying the negative message.",
-                        effects: { morale: 0, supplies: -5, manpower: -150, fiscalHealth: 0 }, // Small combat loss
+                        effects: { morale: 0, supplies: -5, manpower: -150, fiscalHealth: 0 }, 
                         isHighRisk: true
                     },
                     {
@@ -208,47 +300,42 @@
                         result: "Internal Boost. This provides the best short-term morale boost to your men, but it strains the Church's limited political capital, making them less useful later.",
                         effects: { morale: +15, supplies: 0, manpower: 0, fiscalHealth: 0 }
                     },
-                    {
-                        label: "Option E: Do Nothing. Let the storm pass. Redirect all available funds to preparing the bunkers for the inevitable attack, saving every resource.",
-                        result: "Crippled Morale. The damage is immediate and uncontested. While you save resources, the inaction severely compromises the long-term fighting spirit of the force.",
-                        effects: { morale: -20, supplies: +5, manpower: -400, fiscalHealth: 0 } // High desertion
-                    },
                 ]
             },
-            // Index 2: Scenario 3 (The one with special branching logic)
+            // --- OCCUPATION PHASE: TURN 5 (INDEX 4) - SCENARIO 3A (WITH BUNKERS) ---
             {
-                title: "Scenario 3: The Winter Siege (Defeating Isolation)",
+                title: "Scenario 3A: The Winter Siege (Defeating Isolation)",
                 text: "Enemy special forces are preparing a massive siege on your three isolated bunker sites, armed with specialized equipment, flamethrowers, and nerve agents. The attack starts in 72 hours.",
                 options: [
                     {
                         label: "Option A: Tactical Retreat. Abandon the bunkers and booby-trap them to buy time. Disperse all units for prolonged guerrilla warfare.",
                         result: "Safety through dispersion. You save your men, but lose your final sanctuary and supply caches. Retreating severely damages your fighters' faith in victory.",
-                        effects: { morale: -15, supplies: -10, manpower: -100, fiscalHealth: 0 } // Minimal tactical loss
+                        effects: { morale: -15, supplies: -10, manpower: -100, fiscalHealth: 0 } 
                     },
                     {
                         label: "Option B: Defense through Agility. Buy limited anti-chemical gear. Split forces into bunker defense and highly mobile units for continuous harassment and infrastructure strikes.",
                         result: "Decisive Victory. The harassment breaks the enemy's siege morale, and the chemical countermeasure works. You survive, but the massive expenditure severely strains your budget.",
-                        effects: { morale: +25, supplies: -15, manpower: -300, fiscalHealth: 'D' } // Combat loss
+                        effects: { morale: +25, supplies: -15, manpower: -300, fiscalHealth: 'D' } 
                     },
                     {
-                        label: "Option C: Static Defense. Place all men inside the bunkers and wait. Use your ATGM stocks to ambush the approaching columns.",
+                        label: "Option C: Static Defense. Place all men inside the bunkers and wait. Use your ATGM stocks to ambush the approaching columns. (WARNING: High risk of isolation.)",
                         result: "The Nerve Agent Trap. High initial defense is negated. The enemy successfully uses the ventilation shafts, and the concentrated force is decimated in the confined spaces. (This leads to the 'Starvation Siege' scenario if you survive the immediate effects.)",
-                        effects: { morale: -30, supplies: -10, manpower: -2000, fiscalHealth: 0 } // High casualty rate
+                        effects: { morale: -30, supplies: -10, manpower: -2000, fiscalHealth: 0 } 
                     },
                     {
                         label: "Option D: Pre-emptive All-Out Attack. Launch a massive, high-risk, all-out attack on the enemy staging area 48 hours before the siege starts.",
-                        result: "High Risk. If Morale, Supplies, and Manpower are high (>80% and >5000), this is a decisive victory, skipping a turn. Otherwise, it's a catastrophic failure.",
-                        effects: { morale: 0, supplies: -40, manpower: -1500, fiscalHealth: 0 }, // High-risk loss
+                        result: "High Risk. If Morale, Supplies, and Manpower are high (>80%, >80%, and >5000), this is a decisive victory, skipping a turn. Otherwise, it's a catastrophic failure.",
+                        effects: { morale: 0, supplies: -40, manpower: -1500, fiscalHealth: 0 }, 
                         isHighRisk: true
                     },
                     {
                         label: "Option E: Consolidate. Abandon the two weakest bunkers immediately. Concentrate all resources and manpower into the single strongest bunker.",
-                        result: "Guaranteed Survival of Command. You secure your highest-value assets but sacrifice flexibility and create a single, critical target for the enemy's future nuclear or chemical response. (Immediate game over.)",
-                        effects: { morale: -10, supplies: +15, manpower: -50, fiscalHealth: 0 } // Minor loss
+                        result: "Guaranteed Survival of Command. You secure your highest-value assets but sacrifice flexibility and create a single, critical target for the enemy's future nuclear or chemical response.",
+                        effects: { morale: -10, supplies: +15, manpower: -50, fiscalHealth: 0 } 
                     },
                 ]
             },
-            // Index 3: Scenario 4 (Standard continuation for A & B from Turn 3)
+            // --- OCCUPATION PHASE: TURN 6 (INDEX 5) ---
             {
                 title: "Scenario 4: The Counter-Harassment (The Road Trap)",
                 text: "Your rapid harassment tactics are now being countered. The enemy has saturated known routes with mines and loitering munitions, causing heavy casualties on your mobile units. You must adapt or lose your tactical edge.",
@@ -266,7 +353,7 @@
                     {
                         label: "Option C: Increase Tempo. Double harassment frequency, accepting high losses, hoping to force enemy error and deplete their drone stocks.",
                         result: "Pyhrric Victory. You force the enemy to burn through their drones, but the cost in men and materiel is horrifying. Your supplies are critically low.",
-                        effects: { morale: -20, supplies: -35, manpower: -1000, fiscalHealth: 0 }, // High combat loss
+                        effects: { morale: -20, supplies: -35, manpower: -1000, fiscalHealth: 0 }, 
                         isHighRisk: true
                     },
                     {
@@ -277,11 +364,11 @@
                     {
                         label: "Option E: External Call. Send a high-ranking political operative out to beg for immediate international military aid.",
                         result: "High-risk failure. The operative is captured, and the enemy uses their confession as a propaganda victory, severely damaging your morale and international credibility.",
-                        effects: { morale: -35, supplies: 0, manpower: -100, fiscalHealth: 0 } // Captured operative
+                        effects: { morale: -35, supplies: 0, manpower: -100, fiscalHealth: 0 } 
                     },
                 ]
             },
-            // Index 4: Scenario 5 (The final turn)
+            // --- FINAL OCCUPATION PHASE: TURN 7 (INDEX 6) ---
             {
                 title: "Scenario 5: Enduring Insurgency (The Long Game)",
                 text: "You have survived the most challenging phase. The enemy is now settling in for a long occupation. You must transition from short-term defense to a sustainable, enduring war model (Rotation, Political Control, Recruitment).",
@@ -289,7 +376,7 @@
                     {
                         label: "Option A: Implement the Rotation Model. Constant cycle of Offense, Evasion, and Recovery across the new bunker network.",
                         result: "Sustainability achieved. This model is effective, maintaining high fighter morale, but the constant operational tempo is highly demanding on supplies.",
-                        effects: { morale: +15, supplies: -30, manpower: -300, fiscalHealth: 0 }, // Operational losses
+                        effects: { morale: +15, supplies: -30, manpower: -300, fiscalHealth: 0 }, 
                         isHighRisk: true
                     },
                     {
@@ -300,13 +387,13 @@
                     {
                         label: "Option C: The Decapitation Strike. Concentrate all available forces for one final, devastating strike on the enemy's regional command center.",
                         result: "Final Desperation. The enemy was prepared. The attack is a catastrophic failure, resulting in the loss of critical leadership and the functional collapse of the organization.",
-                        effects: { morale: -50, supplies: -20, manpower: -3000, fiscalHealth: 0 }, // Catastrophic loss
+                        effects: { morale: -50, supplies: -20, manpower: -3000, fiscalHealth: 0 }, 
                         isHighRisk: true
                     },
                     {
                         label: "Option D: Massive Recruitment Drive. Launch a public campaign to bring in thousands of new fighters from the cities.",
                         result: "Numerical boost. You gain huge manpower and a rush of initial morale, but integrating, training, and feeding the new recruits immediately stresses all resources.",
-                        effects: { morale: +20, supplies: -30, manpower: +4000, fiscalHealth: 'C' } // Massive gain
+                        effects: { morale: +20, supplies: -30, manpower: +4000, fiscalHealth: 'C' } 
                     },
                     {
                         label: "Option E: Cut the Mafia. Finally cut off all illicit funding ties to recover absolute moral legitimacy.",
@@ -315,7 +402,7 @@
                     },
                 ]
             },
-            // Index 5: NEW Scenario 4B (Branching scenario for Option C from Turn 3)
+            // --- BRANCHING SCENARIO: TURN 6 (INDEX 7) - STARVATION SIEGE (Bunker Failure) ---
             {
                 title: "Scenario 4B: The Starvation Siege (Bunker Standoff)",
                 text: "The enemy did not assault the bunkers directly but instead encircled them, cutting all resupply and poisoning external water sources. Your men are now starving and demand action, but leaving the bunker means certain death. You must find a way to break the siege.",
@@ -323,30 +410,215 @@
                     {
                         label: "Option A: Tunnel Breakout. Dedicate all remaining manpower to digging an emergency exit tunnel. (High risk, high labor/supply cost)",
                         result: "The tunnels are successful, but the effort drains your already meager supplies. You escape the trap, but the organization is severely weakened and must now focus on recovery.",
-                        effects: { morale: +10, supplies: -30, manpower: -200, fiscalHealth: 0 }, // Loss from exhaustion/minor skirmishes
+                        effects: { morale: +10, supplies: -30, manpower: -200, fiscalHealth: 0 }, 
                         isHighRisk: true
                     },
                     {
                         label: "Option B: Negotiate Terms. Send an envoy to negotiate a humanitarian corridor for non-combatants and a truce. (Political risk, high morale cost)",
                         result: "The enemy captures the envoy and uses them for propaganda, revealing the desperate state of your forces. Morale collapses, leading to an immediate failure.",
-                        effects: { morale: -40, supplies: 0, manpower: -500, fiscalHealth: 0 } // Defection/Capture
+                        effects: { morale: -40, supplies: 0, manpower: -500, fiscalHealth: 0 } 
                     },
                     {
                         label: "Option C: Last Stand. Order a final, suicidal breakout attack to reclaim the supply lines.",
                         result: "Your forces are too weak and starved to mount an effective attack. The breakout fails, and the command structure is neutralized.",
-                        effects: { morale: -50, supplies: -10, manpower: -4000, fiscalHealth: 0 }, // Decimation
+                        effects: { morale: -50, supplies: -10, manpower: -4000, fiscalHealth: 0 }, 
                         isHighRisk: true
                     }
+                ]
+            },
+            // --- OCCUPATION PHASE: TURN 4 (INDEX 8) - NEW: PROPAGANDA FLOOD (NO MAFIA) ---
+            {
+                title: "Scenario 2B: The Moral Crisis (Propaganda Flood)",
+                text: "The enemy has launched a massive **propaganda campaign** accusing the PUC of war crimes and is simultaneously **flooding the region with humanitarian aid**, painting themselves as liberators. Your moral authority is under immense pressure. You must choose how to respond to save your legitimacy and morale.",
+                options: [
+                    {
+                        label: "Option A: Counter-Aid Initiative. Immediately use all available reserve supplies to release an equivalent amount of humanitarian aid to show the enemy's effort is insufficient.",
+                        result: "Moral Triumph. You successfully seize the narrative, demonstrating sacrifice and moral authority, but the expenditure is immediate and crippling to your supply reserves.",
+                        effects: { morale: +20, supplies: -35, manpower: 0, fiscalHealth: 'C' }
+                    },
+                    {
+                        label: "Option B: Target Aid Distribution. Sabotage enemy aid convoys to prove their insincerity, preventing them from gaining popularity.",
+                        result: "Propaganda Backfire. The public views this as a direct attack on their necessary supplies. Your moral standing collapses, and the enemy gains undeniable ground.",
+                        effects: { morale: -25, supplies: +10, manpower: -100, fiscalHealth: 0 }, 
+                        isHighRisk: true
+                    },
+                    {
+                        label: "Option C: Focus on Military Victory. Ignore the propaganda and launch a large, high-profile attack on a key enemy position to shift the narrative through sheer force.",
+                        result: "Distraction. The attack diverts attention, but the high cost in resources is not justified by the limited moral gain. The enemy resumes its campaign immediately.",
+                        effects: { morale: 0, supplies: -25, manpower: -500, fiscalHealth: 0 }, 
+                        isHighRisk: true
+                    },
+                    {
+                        label: "Option D: Legal Challenge. Use political capital to leak enemy documents proving the humanitarian aid is being diverted/stolen by their officers.",
+                        result: "Slow Burn. You undermine the enemy's effort and gain a small, lasting boost to morale, but the necessary bribes severely strain your current fiscal health.",
+                        effects: { morale: +15, supplies: 0, manpower: 0, fiscalHealth: 'D' }
+                    },
+                ]
+            },
+            // --- OCCUPATION PHASE: TURN 3 (INDEX 9) - SCENARIO 1B (EXPOSED CACHE - NO BUNKERS) ---
+            {
+                title: "Scenario 1B: The Exposed Cache",
+                text: "The enemy is sweeping the border region, and you have intelligence on an unguarded train station full of ATGM and MANPADS. You must secure supplies or risk being caught unprepared. Without secure fortifications, your mobile caches are exposed, and tactical failure means immediate disaster.",
+                options: [
+                    {
+                        label: "Option A: Go Big. Send 50% of your forces to overwhelm the station quickly. High risk, high reward.",
+                        result: "A fierce firefight ensues. You secure the best weapons, but the enemy counter-attack is devastating due to your lack of fallback positions. High casualties and low morale.",
+                        effects: { morale: -20, supplies: +35, manpower: -800, fiscalHealth: 0 }, 
+                        isHighRisk: true
+                    },
+                    {
+                        label: "Option B: Use Drone Recon. Confirm the threat with FPV scouts and send only a small, specialized team to seize the cache.",
+                        result: "Tactical success, but the enemy is too close. The small team is nearly encircled during extraction, and the limited escape options result in heavy losses. Lower morale due to high risk.",
+                        effects: { morale: -5, supplies: +15, manpower: -300, fiscalHealth: 'B' } 
+                    },
+                    {
+                        label: "Option C: Scorch Earth. Avoid the fight entirely. Spend all effort and remaining supplies to destroy or disperse your exposed mobile caches before the enemy can capture them.",
+                        result: "Total Loss of Initiative. You avoid the fight, but the necessary destruction of resources leaves you critically low on supplies. The inaction is viewed by your men as weakness.",
+                        effects: { morale: -10, supplies: -25, manpower: -50, fiscalHealth: 'F' } 
+                    },
+                    {
+                        label: "Option D: Bribe Officials. Use a large amount of liquid cash to buy ATGM systems through corrupt enemy officers on the black market.",
+                        result: "Fast Supply Gain. The weapons arrive quickly, but the severe cash drain compromises your financial security and the immediate cost is significantly higher without a secure financial reserve.",
+                        effects: { morale: -5, supplies: +30, manpower: 0, fiscalHealth: 'D' }
+                    },
+                    {
+                        label: "Option E: Full Intelligence Sweep. Delay all action for three weeks to identify the enemy's real, non-obvious weak point for a later, perfect strike.",
+                        result: "Critical Restlessness. Your fighters become restless and feel exposed without new weapons. You are strategically safer, but tactically unprepared and the morale hit is worse without the security of bunkers.",
+                        effects: { morale: -15, supplies: 0, manpower: 0, fiscalHealth: 0 }
+                    },
+                ]
+            },
+            // --- NEW BRANCHING SCENARIO: TURN 5 (INDEX 10) - SCENARIO 3B (NO BUNKERS) ---
+            {
+                title: "Scenario 3B: The Winter Offensive",
+                text: "A massive enemy winter offensive is underway, aimed at destroying your main supply lines and field command posts before you can fortify. Without secure bunkers, your forces are exposed and must fight mobile, high-casualty battles to survive the blizzard.",
+                options: [
+                    {
+                        label: "Option A: Defensive Line Standoff. Attempt to form a static defensive line in a key town to protect your remaining supplies.",
+                        result: "Decisive Defeat. The lack of preparation leads to a massive, drawn-out firefight. The enemy's superior armor breaks the line, forcing a chaotic, high-casualty retreat.",
+                        effects: { morale: -25, supplies: -20, manpower: -1200, fiscalHealth: 0 },
+                        isHighRisk: true
+                    },
+                    {
+                        label: "Option B: Guerrilla Hit-and-Run. Disperse all units immediately into the dense mountains for continuous harassment and evasion.",
+                        result: "Guerrilla Survival. You avoid direct destruction, but the lack of centralized supply points means many units starve or freeze. The losses are severe, but the organization survives.",
+                        effects: { morale: -10, supplies: -15, manpower: -600, fiscalHealth: 'D' }
+                    },
+                    {
+                        label: "Option C: Tactical Retreat. Abandon current sectors and retreat deep into a known safe zone, conserving all manpower possible.",
+                        result: "Safety, but at a cost. You minimize casualties and hold onto supplies, but surrendering vital ground breaks the will of many fighters and the populace loses faith.",
+                        effects: { morale: -30, supplies: +5, manpower: -100, fiscalHealth: 'B' }
+                    },
+                    {
+                        label: "Option D: Focus on Enemy Logistics. Ignore the immediate infantry threat and focus all fire on enemy fuel and resupply lines far behind the front.",
+                        result: "High-Risk Gamble. You successfully disrupt the enemy's logistics, slowing the offensive, but the lack of local defense leaves your own field command posts vulnerable to capture and destruction.",
+                        effects: { morale: -5, supplies: -30, manpower: -900, fiscalHealth: 0 }, 
+                        isHighRisk: true
+                    },
+                ]
+            },
+            // --- HIDDEN SCENARIO: OCCULT PATH (INDEX 11) ---
+            {
+                title: "Scenario 11: The Subterranean Ritual",
+                text: "The path of the occult has been unlocked. You stand before a massive, carved stone altar deep beneath the command center. An ancient, unsettling power awaits your choice, promising total victory or total destruction. Your choice is final.",
+                options: [
+                    {
+                        // FIXED: Reduced penalties to prevent instant game over. Fiscal hit to Grade D (25) remains.
+                        label: "Option A: The Forbidden Focus. Perform the full, final ritual as described in the ancient texts, sacrificing all strategic reserves to the entity.",
+                        result: "The ritual succeeds! A terrifying power descends, but demands a final earthly architect to channel its influence. The cost is total abandonment of your current resources.",
+                        effects: { morale: +25, supplies: 0, manpower: -500, fiscalNumeric: -25, occultRevival: true } 
+                    },
+                    {
+                        label: "Option B: The Tactical Retreat. Reject the dark power and seal the chamber, continuing the fight with conventional means.",
+                        result: "You choose sanity over certainty. The retreat is orderly, but the time spent below means you missed a critical supply drop. You return to the surface weakened but pure.",
+                        effects: { morale: -10, supplies: -25, manpower: 0, fiscalHealth: 0 }
+                    },
+                    {
+                        label: "Option C: The Partial Sacrifice. Attempt a half-measure ritual, sacrificing only the most expendable resources (low supplies, low manpower).",
+                        result: "The half-measure fails catastrophically. The entity is offended, resulting in an immediate psychic backlash that decimates your command structure and destroys the will of your men.",
+                        effects: { morale: -50, supplies: -25, manpower: -2000, fiscalHealth: 0 }
+                    },
+                ]
+            },
+            // --- HIDDEN SCENARIO: REVIVAL PATH (INDEX 12) ---
+            {
+                title: "Scenario 12: The Architect of Victory",
+                text: "The entity's spectral gaze sweeps across the chamber, manifesting three shadowy figures—three historical leaders whose philosophies perfectly defined the nature of insurgency. Only one can be drawn back to life to lead your final, cosmic war effort. Choose wisely, Commander.",
+                options: [
+                    {
+                        label: "Option A: Revive Roman Shukhevych. The ultimate Nationalist Partisan. His focus: Deep, effective guerrilla warfare and securing the absolute loyalty of the population.",
+                        result: "Shukhevych rises! His mastery of decentralized command and popular resistance turns every farmer into a fighter. You gain total morale and local manpower but his anti-globalist stance alienates foreign backing.",
+                        effects: { morale: +60, supplies: +5, manpower: +3000, fiscalNumeric: -20, occultFocus: true, shukhevychChosen: true },
+                        isFinalGamble: true
+                    },
+                    {
+                        label: "Option B: Revive Mao Zedong. The master of Protracted People's War. His focus: Massive, sustained mobilization and financial self-sufficiency in a grinding war of attrition.",
+                        result: "Mao rises! His command structure immediately implements mass mobilization programs. You gain overwhelming manpower and financial stability, but the necessary totalitarian control reduces morale to mere obedience.",
+                        effects: { morale: +20, supplies: -10, manpower: +5000, fiscalNumeric: +40, occultFocus: true },
+                        isFinalGamble: true
+                    },
+                    {
+                        label: "Option C: Revive Che Guevara. The ideological Revolutionary. His focus: Creating a revolutionary 'Foco' or vanguard to spark global, ideological, high-risk, high-reward campaigns.",
+                        result: "Che rises! His ideological zeal spreads like wildfire, fueling international supply chains. You gain massive external resource flow and strong morale, but his reckless focus on direct action leads to increased immediate manpower losses.",
+                        effects: { morale: +50, supplies: +40, manpower: -1000, fiscalNumeric: 0, occultFocus: true },
+                        isFinalGamble: true
+                    },
+                ]
+            },
+            // --- NEW SCENARIO 13: SHUKHEVYCH'S CONSOLIDATION (INDEX 13) ---
+            {
+                title: "Scenario 13: Shukhevych's Consolidation",
+                text: "Roman Shukhevych, the resurrected Architect, demands action to cement his control and seize the momentum gained from the ritual. The choices before you define the scope of the war: immediate military triumph, ideological purification, or total popular mobilization.",
+                options: [
+                    {
+                        label: "Option A: Full Scale Offensive. Go on a full scale offensive, deploying all reserves to potentially catch the enemy off guard and seize the capital.",
+                        result: "The enemy is overwhelmed by the relentless, coordinated assault. Shukhevych's genius for operational tempo breaks their lines, but the war of movement consumes vast amounts of materiel, leaving your supply lines critically exposed for the final goal.",
+                        effects: { morale: +20, supplies: -30, manpower: +1000, fiscalNumeric: 0 }
+                    },
+                    {
+                        label: "Option B: Purge Disloyalty. Order the immediate liquidation of everyone disloyal to the movement to preserve ideological purity and consolidate command.",
+                        result: "A terrifying, swift purge eliminates all internal dissent. The movement is now ruthlessly focused, leading to improved fiscal oversight, but the moral cost causes fear among the populace and reduces available manpower.",
+                        effects: { morale: -15, supplies: +10, manpower: -500, fiscalNumeric: +25 }
+                    },
+                    {
+                        label: "Option C: Trigger Large Scale Civilian Revolt. Arm and mobilize the civilian population en masse, turning every town into an open front.",
+                        result: "The population rises up in a wave of ideological fury, drowning the enemy in sheer numbers. The manpower gain is immense, but the resulting chaos collapses your logistics and treasury.",
+                        effects: { morale: +30, supplies: -40, manpower: +3500, fiscalNumeric: -25 }
+                    },
+                ]
+            },
+            // --- NEW SCENARIO 14: SHUKHEVYCH'S ULTIMATE MANDATE (INDEX 14) ---
+            {
+                title: "Scenario 14: Shukhevych's Ultimate Mandate",
+                text: "The enemy is broken. Victory is assured. Shukhevych stands victorious, ready to declare the true purpose of his return and the ultimate goal of the unified Insurgency. The scope of your new nation is now decided.",
+                options: [
+                    {
+                        label: "Option A: Pan-Ukrainian Empire. Avenge centuries of oppression, unite all ethnic Ukrainians from the Vistula River to the Pacific Ocean, and establish a Pan-Ukrainian Empire.",
+                        result: "The borders expand to an unimaginably vast territory. The goal of ultimate, ethnic self-determination is achieved, forever changing the face of the globe.",
+                        effects: {},
+                        isFinalVictory: true,
+                        victoryText: "The Pan-Ukrainian Empire is declared. You have unleashed an unstoppable force that subjugates all historical territories and creates the most formidable nationalist state the world has ever known."
+                    },
+                    {
+                        label: "Option B: Global Anti-Communist Crusade. March across the world and dedicate the Insurgency's power to liberating the world from the tyranny of global Communism.",
+                        result: "A global ideological war is launched. The Insurgency's victory is immediately repurposed into an international crusade against tyranny, fundamentally altering the global geopolitical structure.",
+                        effects: {},
+                        isFinalVictory: true,
+                        victoryText: "The Global Anti-Communist Crusade begins. Shukhevych leads the new army across continents, sparking a tidal wave of revolution that cleanses the world of global communist influence and ushers in a new era of national freedom."
+                    },
+                    {
+                        label: "Option C: Divine Proclamation. Proclaim Shukhevych as a divine reincarnation and herald the immediate, spiritual rebirth of the Kyivan Rus.",
+                        result: "A new spiritual reality descends upon the world. The Insurgency is dissolved, replaced by a divinely-mandated theocracy whose power transcends mere military strength.",
+                        effects: {},
+                        isFinalVictory: true,
+                        victoryText: "The Divine Mandate is fulfilled. Shukhevych is proclaimed the living God-King, resurrecting the spiritual glory of the Kyivan Rus. All earthly opponents bow before the divine power you have restored."
+                    },
                 ]
             }
         ];
 
         // --- GAME LOGIC FUNCTIONS ---
 
-        function getFiscalValue(grade) {
-            return fiscalGrades[grade] || 0;
-        }
-        
         // Helper function for Manpower description
         function getManpowerDescription(manpower) {
             if (manpower > 7500) return { text: 'High (Strong Reserves)', color: 'bg-green-600' };
@@ -357,25 +629,30 @@
         }
 
         function calculateScore(isWin) {
-            const fiscalValue = getFiscalValue(gameState.fiscalHealth);
-            const moraleScore = gameState.morale * 2.5;     // Max 250
-            const suppliesScore = gameState.supplies * 2.5; // Max 250
-            const fiscalScore = fiscalValue * 2.5;          // Max 250
+            const fiscalValue = gameState.fiscalNumeric;
+            const moraleScore = gameState.morale * 2.5;     
+            const suppliesScore = gameState.supplies * 2.5; 
+            const fiscalScore = fiscalValue * 2.5;          
 
-            // NEW METRIC: Long Term Survival Chance (LTSC) - Max 250
             let longTermSurvivalChance = 0;
-            let completedTurns = isWin ? 5 : (gameState.turn > 0 ? gameState.turn - 1 : 0);
-            if (gameState.turn === 5) completedTurns = 5; 
-            if (completedTurns === 6) completedTurns = 4;
+            let completedTurns = isWin ? 7 : (gameState.turn > 0 ? gameState.turn - 1 : 0);
             
-            // 1. LTSC Base Score (based on Turns Completed, 30 points per turn, Max 150)
+            // Adjust completedTurns for Occult Path (Max 14 turns)
+            if (gameState.occultFocus) {
+                 completedTurns = Math.min(14, gameState.turn);
+            } else if (completedTurns > 7) {
+                 completedTurns = 7; // Cap non-occult wins at Turn 7
+            }
+
+
+            // 1. LTSC Base Score
             longTermSurvivalChance += completedTurns * 30; 
             
-            // 2. LTSC Stability Bonus (based on final state/reserves, Max 100)
+            // 2. LTSC Stability Bonus 
             if (gameState.morale > 75) longTermSurvivalChance += 25; 
             if (gameState.supplies > 75) longTermSurvivalChance += 25; 
             if (gameState.fiscalHealth === 'A' || gameState.fiscalHealth === 'B') longTermSurvivalChance += 25;
-            if (gameState.manpower > 5000) longTermSurvivalChance += 25; // Manpower contributes to LTSC
+            if (gameState.manpower > 5000) longTermSurvivalChance += 25; 
 
             longTermSurvivalChance = Math.min(250, longTermSurvivalChance);
             
@@ -385,12 +662,11 @@
         }
 
         function getRating(score) {
-            if (score >= 1000) return { title: 'True Insurgent Leader', color: 'text-yellow-300' };
-            if (score >= 900) return { title: 'Effective Manager', color: 'text-green-400' };
-            if (score >= 800) return { title: 'Good Commander', color: 'text-teal-400' };
-            if (score >= 700) return { title: 'Reasonably Effective Commander', color: 'text-blue-400' };
-            if (score >= 600) return { title: 'Slightly Deficient Commander', color: 'text-yellow-500' };
-            if (score >= 500) return { title: 'Barely Competent', color: 'text-orange-500' };
+            if (score >= 950) return { title: 'Master Strategist', color: 'text-yellow-300' };
+            if (score >= 850) return { title: 'True Insurgent Leader', color: 'text-green-400' };
+            if (score >= 700) return { title: 'Effective Commander', color: 'text-teal-400' };
+            if (score >= 500) return { title: 'Reasonably Competent', color: 'text-blue-400' };
+            if (score >= 350) return { title: 'Deficient Manager', color: 'text-orange-500' };
             return { title: 'Incompetent Commander', color: 'text-red-600' };
         }
 
@@ -399,16 +675,19 @@
             const maxManpower = 10000;
 
             // Update Morale
+            gameState.morale = Math.min(100, Math.max(0, gameState.morale));
             document.getElementById('morale-bar').style.width = gameState.morale + '%';
             document.getElementById('morale-bar').className = `progress-bar-fill h-2.5 rounded-full ${gameState.morale > 70 ? 'bg-red-600' : gameState.morale > 40 ? 'bg-yellow-600' : 'bg-red-900'}`;
             document.getElementById('morale-value').textContent = `${gameState.morale}% (${gameState.morale > 70 ? 'High' : gameState.morale > 40 ? 'Medium' : 'Low'})`;
 
             // Update Supplies
+            gameState.supplies = Math.min(100, Math.max(0, gameState.supplies));
             document.getElementById('supplies-bar').style.width = gameState.supplies + '%';
             document.getElementById('supplies-bar').className = `progress-bar-fill h-2.5 rounded-full ${gameState.supplies > 70 ? 'bg-green-600' : gameState.supplies > 40 ? 'bg-yellow-600' : 'bg-red-900'}`;
             document.getElementById('supplies-value').textContent = `${gameState.supplies}% (${gameState.supplies > 70 ? 'Good' : gameState.supplies > 40 ? 'Strained' : 'Critical'})`;
 
             // Update Manpower
+            gameState.manpower = Math.min(10000, Math.max(0, gameState.manpower));
             const manpowerDesc = getManpowerDescription(gameState.manpower);
             const manpowerPercent = Math.min(100, (gameState.manpower / maxManpower) * 100);
             document.getElementById('manpower-bar').style.width = manpowerPercent + '%';
@@ -417,13 +696,31 @@
 
 
             // Update Fiscal Health
-            const fiscalValue = getFiscalValue(gameState.fiscalHealth);
-            document.getElementById('fiscal-bar').style.width = fiscalValue + '%';
-            document.getElementById('fiscal-bar').className = `progress-bar-fill h-2.5 rounded-full ${fiscalValue > 70 ? 'bg-green-600' : fiscalValue > 40 ? 'bg-yellow-600' : 'bg-red-900'}`;
-            document.getElementById('fiscal-value').textContent = `Grade ${gameState.fiscalHealth}`;
+            gameState.fiscalNumeric = Math.min(100, Math.max(0, gameState.fiscalNumeric));
+            gameState.fiscalHealth = calculateFiscalGrade(gameState.fiscalNumeric);
+            const fiscalPercent = gameState.fiscalNumeric;
+            let fiscalSuffix = '';
+            
+            // Add major defining tags
+            if (gameState.hasMafiaTies) fiscalSuffix = '(Tied)';
+            else if (gameState.hasInternationalFocus) fiscalSuffix = '(Backed)';
+            
+            if (gameState.hasBunkers) {
+                 fiscalSuffix += (fiscalSuffix ? ' ' : '') + '(Fortified)';
+            }
+            if (gameState.hasPoliticalCollaborators) {
+                fiscalSuffix += (fiscalSuffix ? ' ' : '') + '(Collaborators)';
+            }
+            if (gameState.occultFocus) {
+                 fiscalSuffix += (fiscalSuffix ? ' ' : '') + '(Occult)';
+            }
+            
+            document.getElementById('fiscal-bar').style.width = fiscalPercent + '%';
+            document.getElementById('fiscal-bar').className = `progress-bar-fill h-2.5 rounded-full ${fiscalPercent > 70 ? 'bg-green-600' : fiscalPercent > 40 ? 'bg-yellow-600' : 'bg-red-900'}`;
+            document.getElementById('fiscal-value').textContent = `Grade ${gameState.fiscalHealth} ${fiscalSuffix}`;
 
             // Check for Game Over conditions
-            if (gameState.morale <= 0 || gameState.supplies <= 0 || fiscalValue <= 0) {
+            if (gameState.morale <= 0 || gameState.supplies <= 0 || gameState.fiscalNumeric <= 0) {
                 endGame(false, false, "The Insurgency collapsed due to a complete lack of critical resources (Morale, Supplies, or Fiscal Health reached 0).");
             }
             if (gameState.manpower < 1000) {
@@ -432,13 +729,53 @@
         }
 
         function applyEffects(effects) {
-            gameState.morale = Math.min(100, Math.max(0, gameState.morale + (effects.morale || 0)));
-            gameState.supplies = Math.min(100, Math.max(0, gameState.supplies + (effects.supplies || 0)));
-            // Manpower caps at 10000
-            gameState.manpower = Math.min(10000, Math.max(0, gameState.manpower + (effects.manpower || 0)));
-            if (effects.fiscalHealth) {
-                gameState.fiscalHealth = effects.fiscalHealth;
+            gameState.morale = gameState.morale + (effects.morale || 0);
+            gameState.supplies = gameState.supplies + (effects.supplies || 0);
+            gameState.manpower = gameState.manpower + (effects.manpower || 0);
+            
+            if (effects.fiscalHealth !== undefined) {
+                const newNumeric = fiscalGradesMap[effects.fiscalHealth];
+                if (newNumeric !== undefined) {
+                     gameState.fiscalNumeric = newNumeric;
+                }
             }
+            
+            // Check for fiscal numeric change directly
+            if (effects.fiscalNumeric !== undefined) {
+                gameState.fiscalNumeric = gameState.fiscalNumeric + effects.fiscalNumeric;
+            }
+
+            if (effects.setsMafiaTies) {
+                gameState.hasMafiaTies = true;
+            }
+            if (effects.setsInternationalFocus) {
+                gameState.hasInternationalFocus = true;
+            }
+            if (effects.setsBunkerFlag) {
+                gameState.hasBunkers = true;
+            }
+            if (effects.setsPoliticalCollaborators) {
+                gameState.hasPoliticalCollaborators = true;
+            }
+            // Occult flags
+            if (effects.occultFocus) {
+                gameState.occultFocus = true;
+            }
+            if (effects.occultRevival) {
+                gameState.occultRevival = true;
+            }
+            if (effects.shukhevychChosen) {
+                gameState.shukhevychChosen = true;
+            }
+
+
+            // Always run updateMetricsDisplay immediately after applying effects
+            updateMetricsDisplay(); 
+        }
+
+        function getTurnType(turn) {
+            if (turn >= 11) return "OCCULT PATH";
+            return turn <= 2 ? "PREPARATION PHASE" : "OCCUPATION PHASE";
         }
 
         function endGame(isWin, isAssaultCollapse = false, customMessage = null) {
@@ -452,11 +789,11 @@
             const rating = getRating(totalScore);
 
             if (customMessage) {
-                finalMessage = `\n\n--- CATASTROPHIC FAILURE ---\n\n${customMessage}`;
+                finalMessage = `\n\n--- CAMPAIGN CONCLUDED ---\n\n${customMessage}`;
             } else if (isAssaultCollapse) {
-                finalMessage = `\n\n--- CATASTROPHIC COLLAPSE (SUPPLIES/MANPOWER) ---\n\nYour desperate assault attempt failed instantly due to critical resource shortages. The organization cannibalized itself, leading to final defeat.\n\nYour insurgency is dead, and along with it, so too does the dream of freedom die.`;
+                finalMessage = `\n\n--- CATASTROPHIC COLLAPSE (SUPPLIES/MANPOWER) ---\n\nYour desperate assault attempt failed instantly due to critical resource shortages (low supplies, low manpower, or low morale). The organization cannibalized itself, leading to final defeat. Your insurgency is dead, and along with it, so too does the dream of freedom die.`;
             } else if (isWin) {
-                finalMessage = `\n\n--- CAMPAIGN SUCCESS ---\n\nCommander, you successfully transitioned the PUC into an ENDURING INSURGENCY across 5 critical turns!`;
+                finalMessage = `\n\n--- CAMPAIGN SUCCESS ---\n\nYou successfully transitioned the PUC into an ENDURING INSURGENCY!`;
             } else {
                 finalMessage = `\n\n--- CAMPAIGN FAILURE ---\n\nYour lack of resources or loss of control has led to the collapse of the Insurgency.`;
             }
@@ -477,122 +814,165 @@
         function handleDecision(option) {
             if (gameState.isGameOver) return;
             
-            const currentScenarioIndex = gameState.turn - 1;
-            const isHighRiskOffensive = option.isHighRisk;
+            // Determine the scenario index that was just played (before turn increment)
+            let currentScenarioIndex = gameState.turn - 1;
+            
+            // Branching logic to determine which scenario index corresponds to the current turn
+            if (gameState.turn === 3) {
+                 currentScenarioIndex = gameState.hasBunkers ? 2 : 9; 
+            } else if (gameState.turn === 4) {
+                 currentScenarioIndex = gameState.hasMafiaTies ? 3 : 8; 
+            } else if (gameState.turn === 5) {
+                 currentScenarioIndex = gameState.hasBunkers ? 4 : 10; 
+            } else if (gameState.turn === 6 && gameState.specialNextScenarioIndex === 7) {
+                currentScenarioIndex = 7; 
+            } else if (gameState.turn === 11) { 
+                currentScenarioIndex = 11;
+            } else if (gameState.turn === 12) { 
+                currentScenarioIndex = 12;
+            } else if (gameState.turn === 13) { 
+                currentScenarioIndex = 13;
+            } else if (gameState.turn === 14) { 
+                currentScenarioIndex = 14;
+            }
 
-            // --- INSURGENCY COLLAPSE CHECKS (Applies to all high-risk options) ---
-            if (isHighRiskOffensive) {
-                // Check 1: Supplies/Manpower Check (Assault Collapse)
+
+            const isHighRiskOffensive = option.isHighRisk || option.isFinalGamble;
+
+            // --- INSURGENCY COLLAPSE CHECKS (Applies to all high-risk options in the OCCUPATION PHASE - Turn 3+) ---
+            // Occult path (Turns 11+) is excluded from standard collapse checks, but internal failures in 11/13/14 still lead to game over.
+            if (isHighRiskOffensive && gameState.turn >= 3 && gameState.turn < 11) { 
                 if (gameState.supplies < 50 || gameState.manpower < 3000) {
-                    endGame(false, true); // Custom collapse message
+                    endGame(false, true); 
                     return; 
                 }
-                
-                // Check 2: Morale Check (Offensive Failure)
                 if (gameState.morale < 50) {
-                    endGame(false); // Standard failure message
+                    endGame(false); 
                     return; 
                 }
             }
             // --- END COLLAPSE CHECKS ---
-
             
-            // --- SPECIAL BRANCHING LOGIC FOR TURN 3 (Index 2) ---
-            if (currentScenarioIndex === 2) { 
-                
-                // Option E: Immediate Fail
-                if (option.label.includes("Option E: Consolidate")) {
-                    applyEffects(option.effects);
-                    endGame(false, false, "The consolidation effort failed to account for long-term enemy strategy. By abandoning key territories, you surrendered the strategic depth required to survive, leading to immediate encirclement and political collapse.");
-                    return;
-                }
-
-                // Option D: High Risk, Jump to Turn 5 (index 4) if successful
-                if (option.label.includes("Option D: Pre-emptive All-Out Attack")) {
-                    if (gameState.morale <= 80 || gameState.supplies <= 80 || gameState.manpower <= 5000) {
-                        applyEffects(option.effects);
-                        endGame(false, false, "Your forces were not ready. The pre-emptive assault collapsed instantly due to insufficient morale, supplies, or **manpower** (Manpower: "+gameState.manpower+"). The organization suffered catastrophic losses.");
-                        return;
-                    }
-                    
-                    // Success: Apply effects and jump to Turn 5 (index 4)
-                    applyEffects(option.effects);
-                    
-                    const oldMorale = document.getElementById('morale-value').textContent;
-                    const oldSupplies = document.getElementById('supplies-value').textContent;
-                    const oldManpower = document.getElementById('manpower-value').textContent;
-                    
-                    let output = `[Turn 3 - ${scenarios[currentScenarioIndex].title}]\n\nAction Chosen: ${option.label}\n\n--- Aftermath Report ---\nYour high morale, strong supply lines, and **sufficient manpower** allowed you to execute a perfect pre-emptive strike. The enemy's winter siege plans are shattered.\n\n--- Metric Change ---\n`;
-                    output += `Supplies: ${oldSupplies} -> ${gameState.supplies}%\n`;
-                    output += `Manpower: ${oldManpower} -> ${gameState.manpower}\n`;
-
-                    output += "\n\n--- SUCCESSFUL DECISIVE STRIKE ---\nCommander, your boldness paid off! The enemy staging area was shattered. You have won the winter and secured the jump to the final phase.";
-                    document.getElementById('game-output').textContent = output;
-                    updateMetricsDisplay();
-                    
-                    gameState.turn = 5; // Skip turn 4
-                    setTimeout(loadScenario, 1500);
-                    return;
-                }
-
-                // Option C: New Starvation Scenario (Index 5)
-                if (option.label.includes("Option C: Static Defense")) {
-                    applyEffects(option.effects);
-                    
-                    // Check for immediate defeat before progressing
-                    updateMetricsDisplay();
-                    if (gameState.isGameOver) return; 
-
-                    gameState.turn++; // Now turn 4
-                    gameState.specialNextScenarioIndex = 5; // Index of Scenario 4B (Starvation Siege)
-                    
-                    const currentScenario = scenarios[currentScenarioIndex];
-                    const oldMorale = document.getElementById('morale-value').textContent;
-                    const oldSupplies = document.getElementById('supplies-value').textContent;
-                    const oldManpower = document.getElementById('manpower-value').textContent;
-
-                    let output = `[Turn ${gameState.turn - 1} - ${currentScenario.title}]\n\nAction Chosen: ${option.label}\n\n--- Aftermath Report ---\n${option.result}\n\n--- Metric Change ---\n`;
-                    output += `Morale: ${oldMorale} -> ${gameState.morale}%\n`;
-                    output += `Supplies: ${oldSupplies} -> ${gameState.supplies}%\n`;
-                    output += `Manpower: ${oldManpower} -> ${gameState.manpower}\n`;
-                    
-                    document.getElementById('game-output').textContent = output;
-                    setTimeout(loadScenario, 1500);
-                    return;
-                }
-            }
-            
-            // --- LOGIC FOR SPECIAL STARVATION SCENARIO (Index 5, Turn 4) ---
-            if (currentScenarioIndex === 5) {
-                applyEffects(option.effects);
-                
-                // Check for defeat in the special scenario (Option B or C)
-                updateMetricsDisplay();
-                if (gameState.isGameOver) return; 
-
-                // If survived (Option A), jump to Turn 5 (index 4)
-                if (option.label.includes("Option A: Tunnel Breakout")) {
-                     document.getElementById('game-output').textContent += "\n\n--- ESCAPE SUCCESS ---\nThe breakout was successful. Though severely depleted, the PUC survived the siege and is ready for the final strategic phase.";
-                    
-                    gameState.turn = 5; 
-                    setTimeout(loadScenario, 1500);
-                    return;
-                }
-            }
-
-
-            // --- STANDARD GAME FLOW (All other options/turns) ---
-            const currentScenario = scenarios[currentScenarioIndex];
-            
+            // Capture old metrics for the log
             const oldMorale = document.getElementById('morale-value').textContent;
             const oldSupplies = document.getElementById('supplies-value').textContent;
             const oldFiscal = document.getElementById('fiscal-value').textContent;
             const oldManpower = document.getElementById('manpower-value').textContent;
-            
+
+            // Apply scenario effects for standard options
             applyEffects(option.effects);
+
+            // --- OCCULT PATH LOGIC ---
+
+            // Turn 11: Ritual Choice -> Advance to Turn 12 (Revival)
+            if (currentScenarioIndex === 11 && option.effects.occultRevival) {
+                const output = `[${getTurnType(gameState.turn)} - Turn ${gameState.turn}]\n\nAction Chosen: ${option.label}\n\n--- Cataclysmic Result ---\n${option.result}\n\n--- Metric Change ---\nResources are spent, but an unimaginable power is now active.\n\nWARNING: The choice is now between the three greatest insurgent leaders in history. Choose your final architect of victory.`;
+                document.getElementById('game-output').textContent = output;
+                
+                gameState.turn = 12; 
+                setTimeout(loadScenario, 1500);
+                return;
+            }
             
-            // Generate output summary
-            let output = `[Turn ${gameState.turn} - ${currentScenario.title}]\n\n`;
+            // Turn 12: Architect of Victory -> Advance to Turn 13 or end
+            if (currentScenarioIndex === 12) {
+                if (option.effects.shukhevychChosen) {
+                    // Shukhevych chosen, proceed to consolidation (Turn 13)
+                    const output = `[${getTurnType(gameState.turn)} - Turn ${gameState.turn}]\n\nAction Chosen: ${option.label}\n\n--- Revival Success ---\n${option.result}\n\n**Roman Shukhevych** has been summoned and demands immediate, focused action. Prepare for the consolidation phase.`;
+                    document.getElementById('game-output').textContent = output;
+                    gameState.turn = 13; 
+                    setTimeout(loadScenario, 1500);
+                    return;
+                } else {
+                    // Other leader chosen, lead to final victory and unique end message
+                    const finalLeader = option.label.split(': ')[0].replace('Option ', '');
+                    endGame(true, false, `--- COSMIC VICTORY VIA REVIVAL ---\n\nThe Architect has been chosen. **${finalLeader}** now leads your forces, transforming the entire conflict overnight into an unstoppable military and ideological machine. The war is over, won by a force beyond mortal men.`);
+                    return;
+                }
+            }
+
+            // Turn 13: Consolidation Choice -> Advance to Turn 14 (Ultimate Mandate)
+            if (currentScenarioIndex === 13) {
+                const currentScenario = scenarios[currentScenarioIndex];
+                
+                let output = `[${getTurnType(gameState.turn)} - Turn ${gameState.turn} - ${currentScenario.title}]\n\nAction Chosen: ${option.label}\n\n--- Consolidation Achieved ---\n${option.result}\n\n**Shukhevych** prepares to declare the ultimate objective. Your victory is imminent.`;
+                document.getElementById('game-output').textContent = output;
+                
+                gameState.turn = 14; 
+                setTimeout(loadScenario, 1500);
+                return;
+            }
+            
+            // Turn 14: Ultimate Mandate -> Immediate Victory
+            if (currentScenarioIndex === 14 && option.isFinalVictory) {
+                endGame(true, false, option.victoryText);
+                return;
+            }
+            
+            // --- END OCCULT PATH LOGIC ---
+
+
+            // --- MAFIA FISCAL BOOST CHECK (Applied *after* scenario effects for the next turn) ---
+            let mafiaLog = '';
+            if (gameState.hasMafiaTies && gameState.turn < 11) { // Mafia ties end if occult path is taken
+                const boost = 12.5;
+                const newFiscalNumeric = Math.min(100, gameState.fiscalNumeric + boost);
+                
+                if (newFiscalNumeric !== gameState.fiscalNumeric) {
+                     mafiaLog = `\n[Mafia Ties]: Received ${boost} numeric fiscal points, supporting Grade ${calculateFiscalGrade(newFiscalNumeric)}.`;
+                     gameState.fiscalNumeric = newFiscalNumeric; 
+                     gameState.fiscalHealth = calculateFiscalGrade(gameState.fiscalNumeric);
+                } else if (gameState.fiscalNumeric === 100) {
+                     mafiaLog = `\n[Mafia Ties]: Funding received, fiscal health is already at max (Grade A).`;
+                }
+            }
+            
+            // --- LOGIC FOR SPECIAL STARVATION SCENARIO (Index 7, Turn 6 Branch) ---
+            if (currentScenarioIndex === 7) {
+                
+                updateMetricsDisplay();
+                if (gameState.isGameOver) return; 
+
+                // If survived (Option A), jump to Turn 7 (index 6)
+                if (option.label.includes("Option A: Tunnel Breakout")) {
+                     document.getElementById('game-output').textContent += "\n\n--- ESCAPE SUCCESS ---\nThe breakout was successful. Though severely depleted, the PUC survived the siege and is ready for the final strategic phase.";
+                    
+                    gameState.turn = 7; 
+                    setTimeout(loadScenario, 1500);
+                    return;
+                }
+            }
+
+
+            // --- FINAL GAMBLE LOGIC (Turn 4) ---
+            if (option.isFinalGamble && gameState.turn === 4) {
+                // Success Condition: Very high Morale AND very high Manpower AND high Fiscal Health
+                const requiredMorale = 90;
+                const requiredManpower = 6000;
+                const requiredFiscal = 75; // Grade B
+
+                if (gameState.morale >= requiredMorale && gameState.manpower >= requiredManpower && gameState.fiscalNumeric >= requiredFiscal) {
+                    // Instant Win!
+                    endGame(true, false, "--- DECISIVE VICTORY! ---\n\nYour **Final Gamble** succeeded! The enemy command structure was neutralized, collapsing the occupation overnight. Victory secured in only four turns!");
+                    return;
+                } else {
+                    // Instant Defeat
+                    const failureReason = `The Final Gamble failed. Your forces were not sufficiently prepared (Morale: ${gameState.morale}% / Min ${requiredMorale}%, Manpower: ${gameState.manpower} / Min ${requiredManpower}, Fiscal: Grade ${gameState.fiscalHealth} / Min B). The resulting counter-attack destroyed your entire central command structure.`;
+                    
+                    // Apply immediate catastrophic loss before ending the game
+                    applyEffects({ morale: -100, supplies: -50, manpower: -4000 });
+                    
+                    endGame(false, false, failureReason);
+                    return;
+                }
+            }
+            // --- END FINAL GAMBLE LOGIC ---
+
+            // --- STANDARD GAME FLOW ---
+            
+            const currentScenario = scenarios[currentScenarioIndex];
+            
+            let output = `[${getTurnType(gameState.turn)} - Turn ${gameState.turn} - ${currentScenario.title}]\n\n`;
             output += `Action Chosen: ${option.label}\n\n`;
             output += `--- Aftermath Report ---\n`;
             output += `${option.result}\n\n`;
@@ -602,47 +982,173 @@
             if (option.effects.morale) changes.push(`Morale: ${oldMorale} -> ${gameState.morale}%`);
             if (option.effects.supplies) changes.push(`Supplies: ${oldSupplies} -> ${gameState.supplies}%`);
             if (option.effects.manpower) changes.push(`Manpower: ${oldManpower.split(' ')[0]} -> ${gameState.manpower}`);
-            if (option.effects.fiscalHealth) changes.push(`Fiscal Health: ${oldFiscal} -> Grade ${option.effects.fiscalHealth}`);
+            
+            const newFiscal = document.getElementById('fiscal-value').textContent;
+            if (oldFiscal !== newFiscal || option.effects.fiscalHealth !== undefined) {
+                changes.push(`Fiscal Health: ${oldFiscal} -> Grade ${gameState.fiscalHealth}`);
+            }
 
             output += changes.join('\n') || "No major metric changes.";
-
+            output += mafiaLog; 
+            
             document.getElementById('game-output').textContent = output;
 
             updateMetricsDisplay();
             
             if (gameState.isGameOver) return; 
 
-            if (gameState.turn < 5) { // Only proceed if we haven't reached the final turn yet
+            if (gameState.turn < 7) { 
                 gameState.turn++;
-                setTimeout(loadScenario, 1500); // Small delay for effect
+                setTimeout(loadScenario, 1500); 
             } else {
                 endGame(true);
             }
         }
+
+        function loadOccultScenario() {
+            // Special function to load the occult path directly (Turn 11)
+            if (gameState.isGameOver || gameState.turn >= 11) return;
+            
+            // Set initial occult state
+            gameState.turn = 11; 
+            gameState.occultFocus = true;
+            gameState.shukhevychChosen = false; // Reset just in case
+            
+            // Load scenario 11 (index 11)
+            let currentScenario = scenarios[11];
+            
+            document.getElementById('turn-title').textContent = `OCCULT PATH - Turn 11: ${currentScenario.title}`;
+            document.getElementById('scenario-text').textContent = currentScenario.text;
+            
+            const optionsContainer = document.getElementById('options-container');
+            optionsContainer.innerHTML = '';
+
+            // Generate buttons for the occult scenario
+            currentScenario.options.forEach(option => {
+                const button = document.createElement('button');
+                
+                // Use a striking red/black style for the occult choices
+                if (option.label.includes("Forbidden Focus")) {
+                    button.className = 'btn-action text-left p-4 rounded-lg text-white font-medium hover:bg-gray-700 w-full btn-gamble';
+                } else {
+                    button.className = 'btn-action text-left p-4 rounded-lg text-white font-medium hover:bg-gray-700 w-full';
+                }
+
+                button.textContent = option.label;
+                button.onclick = () => handleDecision(option);
+                optionsContainer.appendChild(button);
+            });
+            
+            // Update log
+            document.getElementById('game-output').textContent = `WARNING: The hidden path has been activated. All conventional strategy is now suspended. Your final choice is upon you.`;
+            updateMetricsDisplay();
+        }
+
 
         function loadScenario() {
             if (gameState.isGameOver) return;
 
             let scenarioIndex = gameState.turn - 1;
             
-            if (gameState.turn === 4 && gameState.specialNextScenarioIndex !== undefined) {
+            // --- PRIMARY BRANCHING LOGIC ---
+            if (gameState.turn === 3) {
+                scenarioIndex = gameState.hasBunkers ? 2 : 9; 
+            }
+            else if (gameState.turn === 4) {
+                scenarioIndex = gameState.hasMafiaTies ? 3 : 8; 
+            }
+            else if (gameState.turn === 5) { 
+                scenarioIndex = gameState.hasBunkers ? 4 : 10; 
+            }
+            else if (gameState.turn === 6 && gameState.specialNextScenarioIndex !== undefined) {
                  scenarioIndex = gameState.specialNextScenarioIndex;
                  delete gameState.specialNextScenarioIndex;
-            } else if (gameState.turn === 5) {
-                scenarioIndex = 4;
+            } 
+            else if (gameState.turn === 7) {
+                scenarioIndex = 6;
+            }
+            // Occult Path Logic
+            else if (gameState.turn === 12) {
+                scenarioIndex = 12; // Architect Selection
+            } else if (gameState.turn === 13) {
+                scenarioIndex = 13; // Shukhevych Consolidation
+            } else if (gameState.turn === 14) {
+                scenarioIndex = 14; // Shukhevych Ultimate Mandate
             }
             
-            const currentScenario = scenarios[scenarioIndex];
+            let currentScenario = scenarios[scenarioIndex];
+            let mutableOptions = [...currentScenario.options]; 
+            let nextOptionLetter = 'E';
             
-            document.getElementById('turn-title').textContent = `Turn ${gameState.turn > 5 ? '4B' : gameState.turn}: ${currentScenario.title}`;
+            // Determine starting letter for dynamic options based on base options count
+            if (currentScenario.options.length < 5 && gameState.turn < 12) {
+                nextOptionLetter = String.fromCharCode('A'.charCodeAt(0) + currentScenario.options.length);
+            }
+
+
+            // --- DYNAMIC OPTION INJECTION (Scenario 2A, Index 3, and Scenario 2B, Index 8) ---
+            if (scenarioIndex === 3 || scenarioIndex === 8) { // Turn 4 Scenarios
+                
+                // 1. COLLABORATOR OPTION 
+                if (gameState.hasPoliticalCollaborators) {
+                    const collaboratorOption = {
+                        label: `Option ${nextOptionLetter}: Use Collaborator Network. Activate embedded political collaborators to leak news of enemy aid misuse and divert a portion of the relief supplies to the PUC.`,
+                        result: "Surgical Strike. The leaked evidence destroys the enemy's moral campaign, providing a major morale boost, and the diverted supplies significantly restock your reserves. However, the cost of paying the network results in a minor fiscal hit.",
+                        effects: { morale: +20, supplies: +25, manpower: 0, fiscalHealth: 'D' }
+                    };
+                    mutableOptions.push(collaboratorOption);
+                    nextOptionLetter = String.fromCharCode(nextOptionLetter.charCodeAt(0) + 1);
+                }
+
+                // 2. INTERNATIONAL FOCUS OPTION 
+                if (scenarioIndex === 8 && gameState.hasInternationalFocus) { // Only for Propaganda Flood (Index 8)
+                    const internationalOption = {
+                        label: `Option ${nextOptionLetter}: UN Legal Challenge. Leverage your established international legitimacy to launch a high-profile case in the International Court, framing the enemy's aid campaign as a political stunt.`,
+                        result: "Decisive Political Victory. The enemy's global narrative is shattered, and the court case forces neighboring nations to openly condemn the occupation. This cements your global standing, leading to a massive morale boost and future resource benefits.",
+                        effects: { morale: +35, supplies: +5, manpower: 0, fiscalHealth: 'A' }
+                    };
+                    mutableOptions.push(internationalOption);
+                    nextOptionLetter = String.fromCharCode(nextOptionLetter.charCodeAt(0) + 1);
+                }
+
+                // 3. NEW SECRET: FINAL GAMBLE OPTION (Applies if metrics are high enough)
+                const isReadyForGamble = gameState.morale > 80 && gameState.supplies > 80 && gameState.fiscalNumeric >= 75; // Grade B or A
+                
+                if (isReadyForGamble) {
+                    const gambleOption = {
+                        label: `Option ${nextOptionLetter}: [SECRET] The Final Gamble. Launch a massive, high-risk, resource-intensive operation designed to decapitate the enemy command structure immediately.`,
+                        result: "You concentrate all strategic reserves for a single, decisive attack, attempting to force an early, total victory.",
+                        effects: { morale: -10, supplies: -20, manpower: -1000, fiscalHealth: 0 },
+                        isFinalGamble: true 
+                    };
+                    mutableOptions.push(gambleOption);
+                }
+            }
+            
+            // --- END DYNAMIC OPTION INJECTION ---
+
+
+            const turnType = getTurnType(gameState.turn);
+            document.getElementById('turn-title').textContent = `${turnType}: ${currentScenario.title}`;
             document.getElementById('scenario-text').textContent = currentScenario.text;
 
             const optionsContainer = document.getElementById('options-container');
             optionsContainer.innerHTML = '';
 
-            currentScenario.options.forEach(option => {
+            // Use the mutableOptions array to generate buttons
+            mutableOptions.forEach(option => {
                 const button = document.createElement('button');
-                button.className = 'btn-action text-left p-4 rounded-lg text-white font-medium hover:bg-gray-700 w-full';
+                
+                // Add special styling for the Final Gamble Option and Revival Options
+                if (option.isFinalGamble && gameState.turn === 4) {
+                    button.className = 'btn-action text-left p-4 rounded-lg text-white font-medium hover:bg-gray-700 w-full btn-gamble';
+                } else if (gameState.turn >= 12) {
+                     button.className = 'btn-action text-left p-4 rounded-lg text-white font-medium w-full btn-revival';
+                } 
+                else {
+                    button.className = 'btn-action text-left p-4 rounded-lg text-white font-medium hover:bg-gray-700 w-full';
+                }
+
                 button.textContent = option.label;
                 button.onclick = () => handleDecision(option);
                 optionsContainer.appendChild(button);
@@ -651,21 +1157,37 @@
 
         function resetGame() {
             gameState = {
-                turn: 1,
-                morale: 95, 
-                supplies: 80,
-                manpower: 6000, // Initial Manpower set to 6,000
-                fiscalHealth: 'A',
+                turn: 1, 
+                morale: 80, 
+                supplies: 50,
+                manpower: 5000, 
+                fiscalHealth: 'C', 
+                fiscalNumeric: 50, 
                 isGameOver: false,
+                hasMafiaTies: false,
+                hasInternationalFocus: false, 
+                hasBunkers: false, 
+                hasPoliticalCollaborators: false, 
+                occultFocus: false,
+                occultRevival: false,
+                shukhevychChosen: false,
             };
             document.getElementById('reset-button').classList.add('hidden');
-            document.getElementById('game-output').textContent = `Welcome, Commander. Your first order awaits. The initial setup is complete (95% Morale, 80% Supplies, 6000 Manpower, Grade A Fiscal Health). Choose wisely—poor decisions will lead to collapse. The war will test your logistical, moral, and fiscal resilience.`;
+            document.getElementById('game-output').textContent = `Welcome, Commander. The enemy occupation is IMMINENT. Initial setup is complete (Morale: ${gameState.morale}%, Supplies: ${gameState.supplies}%, Manpower: ${gameState.manpower}, Fiscal Health: Grade ${gameState.fiscalHealth}). You have 2 turns to prepare before the main conflict begins on Turn 3.`;
             updateMetricsDisplay();
             loadScenario();
         }
 
-        // Initialize the game on load
-        document.addEventListener('DOMContentLoaded', resetGame);
+        // Initialize the game on load and set up the secret button
+        document.addEventListener('DOMContentLoaded', () => {
+            resetGame();
+            
+            const secretWits = document.getElementById('secret-wits');
+            if (secretWits) {
+                // Attach the secret handler
+                secretWits.onclick = loadOccultScenario;
+            }
+        });
     </script>
 </body>
 </html>
